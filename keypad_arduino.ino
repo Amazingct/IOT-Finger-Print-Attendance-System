@@ -3,7 +3,7 @@
 #include <String.h>
 const byte ROWS = 4; 
 const byte COLS = 4; 
-int wait = 1100;
+int wait = 800;
 
 SoftwareSerial esp(2,3);
 
