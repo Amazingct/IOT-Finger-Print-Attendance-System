@@ -11,12 +11,12 @@ The Devices makes use of the following hardware:
 Arduino captures key presses and send to ESP, upload arduino.ino to arduino and esp_mai.ino to esp.
 Ensure you use only the i2c lcd library provided in this repo.
 
-Connection
-Arduino d2 = esp rx (disconnect while uploading code to esp)
-arduino d3 = esp tx
+Connection:
+-Arduino d2 = esp rx (disconnect while uploading code to esp)
+-arduino d3 = esp tx
 
-fingerprint sensor rx = esp d5
-fingerprint sensor tx =  esp d6
+-fingerprint sensor rx = esp d5
+-fingerprint sensor tx =  esp d6
 
-lcd sda = esp d1
-lcd scl = esp d2
+-lcd sda = esp d1
+-lcd scl = esp d2
