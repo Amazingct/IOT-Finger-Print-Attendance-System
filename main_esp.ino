@@ -83,28 +83,59 @@ Display(keyboardRead("ENTER NAME ->"), 3000);
 String keyboardRead(String message) 
 //just like input function in python, if parameter is "-" dont print anything to lcd at all, else print parameter to first row and inputed data in snd row
 {
+  lcd.clear();
   lcd.setCursor(0,0);
   lcd.print(message);
-  lcd.setCursor(0,1);
+  lcd.setCursor(0,2);
+  lcd.print("                    ");
+  lcd.setCursor(0,3);
   lcd.print("                    ");
   
-  char all_rx[20];
+  char all_rx[40] = { '\0' }; // to avoid rubbish characters getting in
+  int c = 0;
   int a = 0;
+  int r = 2;
+
   
-  while(a<20)
+  while(a<39)
   {
     if (Serial.available()>0)
     {
    
       char rx = Serial.read();
       if (rx == '#') return all_rx;
-      all_rx[a] = rx;
-      lcd.setCursor(a,1);
-      lcd.print(rx);
-      a = a + 1;
+      else if (rx == '+')
+      {
+        c=c-1;
+        a=a-1;
+        lcd.setCursor(c,r);
+        lcd.print(" ");
+        //update all_rx
+        all_rx[a]=' ';
+      }
+      else if (rx == 'A' || rx == 'B'|| rx == 'C'|| rx == 'D' ||rx == 'E'|| rx == 'F'||
+      rx == 'G'|| rx == 'H'|| rx == 'I'|| rx == 'J'|| rx == 'K'|| rx == 'L'|| rx == 'M'||
+      rx == 'N'|| rx == 'O'|| rx == 'P'|| rx == 'Q'|| rx == 'R'|| rx == 'S'|| rx == 'T'||
+      rx == 'U'|| rx == 'V'|| rx == 'W'|| rx == 'X'|| rx == 'Y'|| rx == 'Z'|| rx == ','||
+      rx == '-'|| rx == '@'|| rx == '*'|| rx == '0'|| rx == '1'|| rx == '2'|| rx == '3'|| 
+      rx == '4'|| rx == '5'|| rx == '6'|| rx == '7'|| rx == '8'|| rx == '9'||rx == ' ' )
+      {
+        all_rx[a] = rx;
+        lcd.setCursor(c,r);
+        lcd.print(rx);
+        a = a + 1;
+        c = c + 1;
+        if(c >= 20)
+        {
+          //move cursor to lower row
+          r = 3;
+          c = 0;
+        }
+        
+      }
     }
   }
-  return all_rx;
+  return String(all_rx);
 }
 
 uint8_t capture_attendance()
