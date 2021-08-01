@@ -14,7 +14,7 @@ uint8_t id;
 LiquidCrystal_I2C lcd(0x27, lcdColumns, lcdRows);
 
 
-void Display(String message, int ms=0)
+void Display(String message, int ms=700)
 {
   lcd.clear();
   lcd.setCursor(0, 0);
@@ -31,13 +31,13 @@ void setup()
   delay(100);
   finger.begin(57600);
   if (finger.verifyPassword()) {
-    Display("SYSTEM CHECK........",3000);
+    Display("SYSTEM CHECK........",2000);
     Display("Found fingerprint sensor!", 3000);
   } else {
     Display("Did not find fingerprint sensor :(");
     while (1) { delay(1); }
   }
-lcd.clear();
+  lcd.clear();
 }
 
 String KeyboardRead(String message){}
@@ -47,35 +47,66 @@ String KeyboardRead(String message){}
 void loop()                     
 {
 
-Display(keyboardRead("ENTER NAME ->"), 3000);
-//  lcd.setCursor(0,0);
-//  lcd.print("PRESS A TO ADD NEW STUDENTl");
- // lcd.setCursor(3,0);
- // lcd.print("PRESS C TO CAPTURE ATTENDANCE");
-  //String rx = KeyboardRead("-");
+  String command = keyboardHome();
+  if (command == "C") // add attendance
+  {
+    int p = -1;
+    while (p != FINGERPRINT_OK) 
+    {
+      p = finger.getImage();
+      switch (p) 
+      {
+        case FINGERPRINT_OK:
+          Display("Image taken");
+          break;
+        case FINGERPRINT_NOFINGER:
+          Display("PLACE FINGER");
+          break;
+        case FINGERPRINT_PACKETRECIEVEERR:
+          Display("Communication error");
+          break;
+        case FINGERPRINT_IMAGEFAIL:
+          Display("Imaging error");
+          break;
+        default:
+          Display("Unknown error");
+          break;
+      }
+    }
+     int id = checkPrint();
+     if (id != -1) 
+     {
+      String std = id2name(id);
+      if (std !="Nill")
+      {
+        Display("WELCOME " + std, 3000);
+        add2attd(std);
+      }
+      else
+      {
+        Display("TRY AGAIN",1000);
+      }
+     }
+  }
+  
+  else if (command == "A") // add new student
+  {
+    finger.getTemplateCount();
+    id = finger.templateCount + 1;
+    Enroll(id);
+    addStudent(KeyboardRead("ENTER NAME: "),id)
+  }
 
-//  if (rx == "A")
-//  {
-//   int news =  Enroll();
-//   if (news != 0)
-//   {
-//    String nameS = KeyboardRead("ENTER YOUR NAME:");
-//    addStudent(nameS, news);// add to list of student
-//   }
-//  }
-//  
-//  else if (rx == "C")
-//  {
-//   uint8_t ids =  capture_attendance();
-//   String std = id2name(ids);
-//   if (std != "#")
-//   {
-//    Display("WELCOME " + std, 3000);
-//    add2attd(std);
-//   }
-//
-//  }
-//  delay(50);
+  else if (command == "B")
+  {
+    if (keyboardRead("DELETE ALL PRINTS?") == "Y") 
+    {
+      finger.emptyDatabase();
+      Display("DONE!",2000);
+    }
+    
+  }
+  delay(50);
   
 }
 ///////////////////////////////////////////////////////////////////////
@@ -137,7 +168,65 @@ String keyboardRead(String message)
   }
   return String(all_rx);
 }
+String keyboardHome() 
+//just like input function in python, if parameter is "-" dont print anything to lcd at all, else print parameter to first row and inputed data in snd row
+{
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("A - ADD NEW STUDENT ");
+  lcd.setCursor(0,1);
+  lcd.print("C - ADD ATTENDANCE  ");
+  lcd.setCursor(0,2);
+  lcd.print("                    ");
+  lcd.setCursor(0,3);
+  lcd.print("                    ");
+  
+  char all_rx[40] = { '\0' }; // to avoid rubbish characters getting in
+  int c = 0;
+  int a = 0;
+  int r = 2;
 
+  
+  while(a<39)
+  {
+    if (Serial.available()>0)
+    {
+   
+      char rx = Serial.read();
+      if (rx == '#') return all_rx;
+      else if (rx == '+')
+      {
+        c=c-1;
+        a=a-1;
+        lcd.setCursor(c,r);
+        lcd.print(" ");
+        //update all_rx
+        all_rx[a]=' ';
+      }
+      else if (rx == 'A' || rx == 'B'|| rx == 'C'|| rx == 'D' ||rx == 'E'|| rx == 'F'||
+      rx == 'G'|| rx == 'H'|| rx == 'I'|| rx == 'J'|| rx == 'K'|| rx == 'L'|| rx == 'M'||
+      rx == 'N'|| rx == 'O'|| rx == 'P'|| rx == 'Q'|| rx == 'R'|| rx == 'S'|| rx == 'T'||
+      rx == 'U'|| rx == 'V'|| rx == 'W'|| rx == 'X'|| rx == 'Y'|| rx == 'Z'|| rx == ','||
+      rx == '-'|| rx == '@'|| rx == '*'|| rx == '0'|| rx == '1'|| rx == '2'|| rx == '3'|| 
+      rx == '4'|| rx == '5'|| rx == '6'|| rx == '7'|| rx == '8'|| rx == '9'||rx == ' ' )
+      {
+        all_rx[a] = rx;
+        lcd.setCursor(c,r);
+        lcd.print(rx);
+        a = a + 1;
+        c = c + 1;
+        if(c >= 20)
+        {
+          //move cursor to lower row
+          r = 3;
+          c = 0;
+        }
+        
+      }
+    }
+  }
+  return String(all_rx);
+}
 uint8_t capture_attendance()
 {
 
@@ -210,10 +299,12 @@ uint8_t capture_attendance()
 String id2name(int id)
 {
   if (id==1) return "Daniel";
+  else if (id==2) return "Femi";
+  
   else 
   {
     Display( "SOMETHING WENT WRONG OR UNKNOWN PRINT", 3000);
-    return ("#");
+    return ("Nill");
   }
   
   
@@ -222,55 +313,94 @@ String id2name(int id)
 
 void add2attd(String name)
 {
-  Serial.println("ADDED STUDENT TO ATTD");
+  Display("ADDED STUDENT TO   ATTEDANCE", 3000);
 }
 
 void addStudent(String name, int id)
 {
-  Serial.println("ADDED NEW STUDENT");
+  Display("ADDED NEW STUDENT", 3000);
 }
 
-int Enroll()
+
+uint8_t checkPrint() 
 {
-  
-  Display("Ready to enroll a fingerprint!", 2000);
-  Display("Please type in the ID # (from 3 to 127) you want to save this finger as...");
-  id = readnumber();
-  if (id == 0 or id == 2) 
-  {
-    Display(" ID NOT ALLOWED! TRY AGAIN ", 2500);
-     return 0;
+    
+    uint8_t p = finger.getImage();
+  switch (p) {
+    case FINGERPRINT_OK:
+      Display("Image taken");
+      break;
+    case FINGERPRINT_NOFINGER:
+      Display("No finger detected");
+      return p;
+    case FINGERPRINT_PACKETRECIEVEERR:
+      Display("Communication error");
+      return p;
+    case FINGERPRINT_IMAGEFAIL:
+      Display("Imaging error");
+      return p;
+    default:
+      Display("Unknown error");
+      return p;
   }
-  Display("Enrolling ID #", 2000);
-  while (!  getFingerprintEnroll() );
-  return id;
+
+  // OK success!
+
+  p = finger.image2Tz();
+  switch (p) {
+    case FINGERPRINT_OK:
+      Display("Image converted");
+      break;
+    case FINGERPRINT_IMAGEMESS:
+      Display("Image too messy");
+      return p;
+    case FINGERPRINT_PACKETRECIEVEERR:
+      Display("Communication error");
+      return p;
+    case FINGERPRINT_FEATUREFAIL:
+      Display("Could not find fingerprint features");
+      return p;
+    case FINGERPRINT_INVALIDIMAGE:
+      Display("Could not find fingerprint features");
+      return p;
+    default:
+      Display("Unknown error");
+      return p;
+  }
+
+  // OK converted!
+  p = finger.fingerSearch();
+  if (p == FINGERPRINT_OK) {
+    Display("Found a print match!");
+  } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
+    Display("Communication error");
+    return p;
+  } else if (p == FINGERPRINT_NOTFOUND) {
+    Display("Did not find a match");
+    return p;
+  } else {
+    Display("Unknown error");
+    return p;
+  }
+
+  // found a match!
+  Display("FOUND PRINT", 2000);
+  return finger.fingerID;
 }
 
-uint8_t readnumber(void) 
-{
-  uint8_t num = 0;
 
-  while (num == 0) {
-    while (! Serial.available());
-    num = Serial.parseInt();
-  }
-  return num;
-}
-
-
-uint8_t getFingerprintEnroll() 
+int Enroll(int id)
 {
   int p = -1;
-  Display("PLACE FINGER ON SENSOR" ); 
-  while (p != FINGERPRINT_OK) 
-  {
+  Display("PLACE FINGER", 500);
+  while (p != FINGERPRINT_OK) {
     p = finger.getImage();
     switch (p) {
     case FINGERPRINT_OK:
       Display("Image taken");
       break;
     case FINGERPRINT_NOFINGER:
-      Display("PLACE FINGER ON SENSOR", 800 ); 
+      Display("PLACE FINGER");
       break;
     case FINGERPRINT_PACKETRECIEVEERR:
       Display("Communication error");
@@ -308,15 +438,15 @@ uint8_t getFingerprintEnroll()
       return p;
   }
 
-  Display("Remove finger");
-  delay(2000);
+  Display("Remove finger",2000);
+
   p = 0;
   while (p != FINGERPRINT_NOFINGER) {
     p = finger.getImage();
   }
-  Serial.print("ID "); Display(String(id));
+  
   p = -1;
-  Display("Place same finger again");
+  Display("Place  finger again");
   while (p != FINGERPRINT_OK) {
     p = finger.getImage();
     switch (p) {
@@ -324,7 +454,7 @@ uint8_t getFingerprintEnroll()
       Display("Image taken");
       break;
     case FINGERPRINT_NOFINGER:
-      Serial.print(".");
+      Display("place finger again",500);
       break;
     case FINGERPRINT_PACKETRECIEVEERR:
       Display("Communication error");
@@ -363,39 +493,40 @@ uint8_t getFingerprintEnroll()
   }
 
   // OK converted!
-  Display("Creating model...", 2000);
+
 
   p = finger.createModel();
   if (p == FINGERPRINT_OK) {
-    Display("Prints matched!", 2000);
+    Display("Prints matched!");
   } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
-    Display("Communication error", 2000);
+    Display("Communication error");
     return p;
   } else if (p == FINGERPRINT_ENROLLMISMATCH) {
-    Display("Fingerprints did not match", 2000);
+    Display("Fingerprints did not match");
     return p;
   } else {
-    Display("Unknown error", 3000);
+    Display("Unknown error");
     return p;
   }
 
- Display("ID: " + String(id), 1500);
+
   p = finger.storeModel(id);
   if (p == FINGERPRINT_OK) {
-    Display("Stored!");
+    Display("Stored!", 3000);
   } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
-    Display("Communication error", 3000);
+    Display("Communication error");
     return p;
   } else if (p == FINGERPRINT_BADLOCATION) {
-    Display("Could not store in that location", 3000);
+    Display("Could not store in that location");
     return p;
   } else if (p == FINGERPRINT_FLASHERR) {
-    Display("Error writing to flash", 3000);
+    Display("Error writing to flash");
     return p;
   } else {
-    Display("Unknown error", 3000);
+    Display("Unknown error");
     return p;
   }
 
   return true;
 }
+
