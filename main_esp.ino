@@ -94,7 +94,8 @@ void loop()
     finger.getTemplateCount();
     id = finger.templateCount + 1;
     Enroll(id);
-    addStudent(KeyboardRead("ENTER NAME: "),id)
+    String names = keyboardRead("ENTER NAME:");
+    addStudent(names,id);
   }
 
   else if (command == "B")
@@ -177,14 +178,14 @@ String keyboardHome()
   lcd.setCursor(0,1);
   lcd.print("C - ADD ATTENDANCE  ");
   lcd.setCursor(0,2);
-  lcd.print("                    ");
+  lcd.print("B - CLEAR DATABASE  ");
   lcd.setCursor(0,3);
   lcd.print("                    ");
   
   char all_rx[40] = { '\0' }; // to avoid rubbish characters getting in
   int c = 0;
   int a = 0;
-  int r = 2;
+  int r = 3;
 
   
   while(a<39)
@@ -318,7 +319,7 @@ void add2attd(String name)
 
 void addStudent(String name, int id)
 {
-  Display("ADDED NEW STUDENT", 3000);
+  Display("ADDED", 3000);
 }
 
 
